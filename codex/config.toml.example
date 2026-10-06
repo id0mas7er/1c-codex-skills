@@ -1,0 +1,12 @@
+# Фрагмент для %USERPROFILE%\.codex\config.toml
+# Подключает MCP-сервер 1c-testpilot к Codex CLI. Пути — прямыми слэшами.
+# Перед правкой сделайте копию config.toml. Обновление Codex может стереть эту секцию —
+# раннер это проверяет (PREFLIGHT FAIL в status.txt), тогда верните её.
+
+[mcp_servers.1c-testpilot]
+command = "C:/Users/<user>/.local/bin/1c-testpilot.exe"
+args = ["--env-file", "<путь к каталогу testpilot>/.env"]
+startup_timeout_sec = 60
+
+# Флаги approval/sandbox задавать здесь НЕ нужно: раннер run-codex-test.ps1
+# передаёт их через -c на каждый запуск.

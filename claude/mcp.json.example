@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "1c-testpilot": {
+      "type": "stdio",
+      "command": "${USERPROFILE}\\.local\\bin\\1c-testpilot.exe",
+      "args": ["--env-file", "<путь к каталогу testpilot>\\.env"]
+    }
+  }
+}
