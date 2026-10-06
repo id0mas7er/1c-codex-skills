@@ -1,7 +1,7 @@
 ---
 name: codex-test-1c
 description: Функциональное тестирование доработок 1С силами Codex через MCP 1c-testpilot (Codex сам управляет тест-клиентом 1С в фоне, Claude потом разбирает отчёт и проверяет находки по коду). Используй когда просят «протестировать кодексом», «отдать тесты Codex», прогнать промт тестирования в базе без участия пользователя.
-argument-hint: <промт_тестирования.md> [--effort low|medium|high]
+argument-hint: <промт_тестирования.md> [--model <модель>] [--effort low|medium|high|max]
 allowed-tools:
   - Bash
   - PowerShell
@@ -101,7 +101,8 @@ Codex (`codex exec`) получает промт тестирования, са�
 - **`no active window` сразу после `launch_client`.** Две причины: окно входа «Доступ к информационной базе»
   (в промте нет `user=` для `launch_client`) или долгая заставка «Загрузка конфигурационной информации» при первом
   запуске после обновления расширения. В промте всегда давать `launch_client(..., user="<пользователь>")`; преамбула велит ждать заставку.
-- Модель и уровень рассуждений берутся из `~/.codex/config.toml`, `-Effort` их переопределяет.
+- Модель и уровень рассуждений раннер задаёт сам: по умолчанию `gpt-6-luna` и `max` (`-Model`, `-Effort` — переопределить).
+  Значения из `~/.codex/config.toml` для них не используются.
 
 ## Подводные камни (codex-cli 0.160)
 - **`Error loading config.toml: invalid transport in mcp_servers.1c-testpilot`** — секция сервера пропала из
@@ -126,6 +127,6 @@ Codex (`codex exec`) получает промт тестирования, са�
   Преамбула прямо разрешает «Отмену», но если отказ повторится, это ⚠️ окружения, окно закрывает пользователь.
 
 ## Файлы
-- `scripts/run-codex-test.ps1` — раннер (`-PromptFile`, `-WorkDir`, `-AddDir`, `-Effort`, `-Probe`).
+- `scripts/run-codex-test.ps1` — раннер (`-PromptFile`, `-WorkDir`, `-AddDir`, `-Model`, `-Effort`, `-Probe`).
 - `scripts/preamble.md` — общая преамбула для любого промта тестирования 1С.
 - Шаблон промта — `examples/prompt-template.md` в корне репозитория.

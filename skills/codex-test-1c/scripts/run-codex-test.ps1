@@ -9,12 +9,14 @@
 
   Результат в WorkDir: status.txt (START / PREFLIGHT / EXIT / TESTPILOT_CALLS), last_message.md, stdout.log, stderr.log.
   TESTPILOT_CALLS 0 при EXIT 0 = прогон до 1С не дошёл (см. SKILL.md, «Подводные камни»).
+  Модель и уровень рассуждений: -Model (по умолчанию gpt-6-luna), -Effort (по умолчанию max).
 #>
 param(
     [string]$PromptFile,
     [Parameter(Mandatory = $true)][string]$WorkDir,
     [string[]]$AddDir = @(),
-    [string]$Effort = '',
+    [string]$Model = 'gpt-6-luna',
+    [ValidateSet('low','medium','high','max')][string]$Effort = 'max',
     [switch]$Probe
 )
 $ErrorActionPreference = 'Continue'
@@ -32,7 +34,7 @@ if (-not $codex) {
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $OutputEncoding = [Text.Encoding]::UTF8
 $status = Join-Path $WorkDir 'status.txt'
-"START $(Get-Date -Format s) probe=$Probe codex=$($codex.Directory.Name)" | Out-File $status -Encoding utf8
+"START $(Get-Date -Format s) probe=$Probe codex=$($codex.Directory.Name) model=$Model effort=$Effort" | Out-File $status -Encoding utf8
 
 # Preflight: обновление Codex может стереть секцию сервера из config.toml — тогда exec падает
 # «Error loading config.toml: invalid transport» (флаг default_tools_approval_mode ниже создаёт неполную секцию).
@@ -65,7 +67,7 @@ $cargs = @('exec', '--skip-git-repo-check', '--sandbox', 'workspace-write',
     '-c', 'windows.sandbox="unelevated"',
     '-C', $WorkDir, '-o', (Join-Path $WorkDir 'last_message.md'))
 foreach ($d in $AddDir) { $cargs += @('--add-dir', $d) }
-if ($Effort) { $cargs += @('-c', "model_reasoning_effort=$Effort") }
+$cargs += @('-c', "model=$Model", '-c', "model_reasoning_effort=$Effort")
 $cargs += '-'
 
 $prompt | & $codex.FullName @cargs 1> (Join-Path $WorkDir 'stdout.log') 2> (Join-Path $WorkDir 'stderr.log')

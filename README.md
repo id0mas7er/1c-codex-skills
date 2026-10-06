@@ -81,6 +81,9 @@ $p = Start-Process powershell.exe -ArgumentList '-NoProfile','-ExecutionPolicy',
 Результат: `status.txt` (`START` / `PREFLIGHT` / `EXIT` / `TESTPILOT_CALLS`), `last_message.md`, `stdout.log`,
 `stderr.log` (UTF-16). `EXIT 0` при `TESTPILOT_CALLS 0` означает, что Codex до 1С не дошёл.
 
+Модель и уровень рассуждений тестирования раннер задаёт сам: по умолчанию `gpt-6-luna` / `max`
+(`-Model`, `-Effort` — переопределить).
+
 Главные подводные камни (подробно — в [SKILL.md](skills/codex-test-1c/SKILL.md) и [TROUBLESHOOTING.md](TROUBLESHOOTING.md)):
 
 - Codex 0.160 вызывает MCP через мост exec: `tools.mcp__1c_testpilot__tc_session({...})`. Не запрещайте в промте «JavaScript / `tools.*`».
@@ -126,7 +129,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scrip
 
 - Песочница Windows `elevated` блокирует даже чтение файлов («blocked by policy») — раннер передаёт `windows.sandbox="unelevated"`, запрет записи сохраняется.
 - Промпт — только файлом (раннер подаёт его в stdin и закрывает поток): аргументом командной строки кириллица ломается, а незакрытый stdin вешает Codex.
-- По умолчанию модель `gpt-6-luna`, уровень рассуждения `max` (`-Model`, `-Effort` — переопределить). Ревью большого объекта идёт 5–25 минут: раннер ждёт до `-TimeoutSec` (1800 с), потом принудительно завершает Codex. Запускайте в фоне.
+- По умолчанию модель `gpt-6-sol`, уровень рассуждения `high` (`-Model`, `-Effort` — переопределить). Ревью большого объекта идёт 3–15 минут (на `max` — до 25): раннер ждёт до `-TimeoutSec` (1800 с), потом принудительно завершает Codex. Запускайте в фоне.
 - Код 0 без ответа (исчерпан лимит, «at capacity») раннер считает ошибкой и печатает хвост лога — не принимайте пустоту за «замечаний нет».
 - offline: `context.md` сохраняйте в UTF-8 **с BOM**; кириллица в имени рабочего каталога мешает Codex читать файлы.
 

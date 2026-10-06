@@ -14,10 +14,10 @@
     -Mode        offline | edt (default: offline).
     -WorkDir     offline: folder with the review materials; edt: EDT workspace root.
     -PromptFile  UTF-8 file with the full review prompt.
-    -Effort      low | medium | high | max (default: max). Lower it for a quick answer.
+    -Effort      low | medium | high | max (default: high). low - quick answer on a very large file.
     -OutFile     Where to write Codex's final message
                  (default: offline - <WorkDir>\_review.md; edt - <PromptFile folder>\_review.md).
-    -Model       Codex model (default: gpt-6-luna). Needed because the user config is ignored.
+    -Model       Codex model (default: gpt-6-sol). Needed because the user config is ignored.
     -TimeoutSec  Watchdog: kill Codex and its children after this many seconds (default: 1800).
 
   Notes:
@@ -35,9 +35,9 @@ param(
   [ValidateSet('offline','edt')][string]$Mode = 'offline',
   [Parameter(Mandatory=$true)][string]$WorkDir,
   [Parameter(Mandatory=$true)][string]$PromptFile,
-  [ValidateSet('low','medium','high','max')][string]$Effort = 'max',
+  [ValidateSet('low','medium','high','max')][string]$Effort = 'high',
   [string]$OutFile,
-  [string]$Model = 'gpt-6-luna',
+  [string]$Model = 'gpt-6-sol',
   [int]$TimeoutSec = 1800
 )
 $ErrorActionPreference = 'Stop'
