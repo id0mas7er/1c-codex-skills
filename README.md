@@ -115,18 +115,18 @@ $p = Start-Process powershell.exe -ArgumentList '-NoProfile','-ExecutionPolicy',
 ```powershell
 # edt: -WorkDir — корень рабочей области EDT (где лежат проекты)
 powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scripts\codex-review.ps1 `
-  -Mode edt -WorkDir "<рабочая область EDT>" -PromptFile "<workdir>\_prompt.txt" -Effort high
+  -Mode edt -WorkDir "<рабочая область EDT>" -PromptFile "<workdir>\_prompt.txt"
 
 # offline: -WorkDir — каталог с материалами
 powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scripts\codex-review.ps1 `
-  -Mode offline -WorkDir "<workdir>" -PromptFile "<workdir>\_prompt.txt" -Effort high
+  -Mode offline -WorkDir "<workdir>" -PromptFile "<workdir>\_prompt.txt"
 ```
 
 Главные подводные камни:
 
 - Песочница Windows `elevated` блокирует даже чтение файлов («blocked by policy») — раннер передаёт `windows.sandbox="unelevated"`, запрет записи сохраняется.
 - Промпт — только файлом (раннер подаёт его в stdin и закрывает поток): аргументом командной строки кириллица ломается, а незакрытый stdin вешает Codex.
-- Ревью большого объекта идёт 5–15 минут: раннер ждёт до `-TimeoutSec` (900 с), потом принудительно завершает Codex. Запускайте в фоне.
+- По умолчанию модель `gpt-6-luna`, уровень рассуждения `max` (`-Model`, `-Effort` — переопределить). Ревью большого объекта идёт 5–25 минут: раннер ждёт до `-TimeoutSec` (1800 с), потом принудительно завершает Codex. Запускайте в фоне.
 - Код 0 без ответа (исчерпан лимит, «at capacity») раннер считает ошибкой и печатает хвост лога — не принимайте пустоту за «замечаний нет».
 - offline: `context.md` сохраняйте в UTF-8 **с BOM**; кириллица в имени рабочего каталога мешает Codex читать файлы.
 
