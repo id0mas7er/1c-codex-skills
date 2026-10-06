@@ -11,6 +11,9 @@
 Общий принцип обоих скиллов: Codex — исполнитель, Claude — проверяющий. Находки Codex не считаются
 дефектами, пока Claude не подтвердит их по коду, метаданным или данным.
 
+Что-то пошло не так — смотрите [TROUBLESHOOTING.md](TROUBLESHOOTING.md) (симптом → причина → что делать).
+Не нашли решения — [заведите Issue](../../issues/new/choose) по шаблону.
+
 ## Требования
 
 - Windows, PowerShell 5.1+.
@@ -73,7 +76,7 @@ $p = Start-Process powershell.exe -ArgumentList '-NoProfile','-ExecutionPolicy',
 Результат: `status.txt` (`START` / `PREFLIGHT` / `EXIT` / `TESTPILOT_CALLS`), `last_message.md`, `stdout.log`,
 `stderr.log` (UTF-16). `EXIT 0` при `TESTPILOT_CALLS 0` означает, что Codex до 1С не дошёл.
 
-Главные подводные камни (подробно — в [SKILL.md](skills/codex-test-1c/SKILL.md)):
+Главные подводные камни (подробно — в [SKILL.md](skills/codex-test-1c/SKILL.md) и [TROUBLESHOOTING.md](TROUBLESHOOTING.md)):
 
 - Codex 0.160 вызывает MCP через мост exec: `tools.mcp__1c_testpilot__tc_session({...})`. Не запрещайте в промте «JavaScript / `tools.*`».
 - `launch_client` всегда с `exe`, `version` и `user`: иначе запустится платформа из `.env` testpilot (может не быть лицензии) или появится окно входа.
@@ -116,4 +119,6 @@ skills/codex-review-offline/
 codex/config.toml.example          — подключение 1c-testpilot к Codex
 claude/mcp.json.example            — (необязательно) подключение 1c-testpilot к Claude Code
 examples/prompt-template.md        — шаблон промта тестирования
+TROUBLESHOOTING.md                 — типичные проблемы и их решение
+.github/ISSUE_TEMPLATE/            — шаблон сообщения о проблеме
 ```

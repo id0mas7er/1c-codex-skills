@@ -1,0 +1,78 @@
+name: Проблема при использовании скилла
+description: Ошибка, зависание или неожиданное поведение codex-test-1c / codex-review-offline
+title: "[<скилл>] <коротко о симптоме>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Сначала проверьте [TROUBLESHOOTING.md](https://github.com/id0mas7er/1c-codex-skills/blob/main/TROUBLESHOOTING.md) — многие ошибки там уже разобраны.
+        **Не вставляйте пароли, токены, содержимое `.env` и данные клиентов.** Пути и имена баз можно заменить на `<...>`.
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Скилл
+      options:
+        - codex-test-1c (тестирование через 1c-testpilot)
+        - codex-review-offline (код-ревью)
+        - оба / общее
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Что произошло
+      description: Симптом и точный текст ошибки.
+      placeholder: "Например: EXIT 0, TESTPILOT_CALLS 0; в last_message.md — TypeError: tools.mcp__1c_testpilot__tc_session is not a function"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что ожидалось
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+      description: Команда запуска раннера (без секретов), был ли пробный запуск (-Probe) и чем он закончился.
+      render: powershell
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: status.txt / фрагмент лога
+      description: Для тестирования — status.txt и последние строки stderr.log (UTF-16, читать Get-Content -Encoding Unicode). Для ревью — вывод раннера и начало _review.md.
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: codex
+    attributes:
+      label: Версия Codex CLI
+      placeholder: "codex --version, например 0.160.0"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Версия 1С:Предприятия (для тестирования)
+      placeholder: "например 8.3.27.xxxx, тонкий клиент"
+    validations:
+      required: false
+  - type: input
+    id: env
+    attributes:
+      label: Окружение
+      description: Версия Windows и PowerShell, значение [windows] sandbox в config.toml (если знаете).
+      placeholder: "Windows 10, PowerShell 5.1, sandbox = elevated"
+    validations:
+      required: false
+  - type: textarea
+    id: tried
+    attributes:
+      label: Что уже пробовали
+    validations:
+      required: false

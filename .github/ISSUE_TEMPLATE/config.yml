@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Типичные проблемы и решения
+    url: https://github.com/id0mas7er/1c-codex-skills/blob/main/TROUBLESHOOTING.md
+    about: Сначала проверьте, нет ли вашей проблемы в TROUBLESHOOTING.md
