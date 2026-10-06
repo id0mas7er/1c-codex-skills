@@ -1,5 +1,5 @@
 name: Проблема при использовании скилла
-description: Ошибка, зависание или неожиданное поведение codex-test-1c / codex-review-offline
+description: Ошибка, зависание или неожиданное поведение codex-test-1c / codex-review-1c
 title: "[<скилл>] <коротко о симптоме>"
 labels: ["bug"]
 body:
@@ -14,7 +14,8 @@ body:
       label: Скилл
       options:
         - codex-test-1c (тестирование через 1c-testpilot)
-        - codex-review-offline (код-ревью)
+        - codex-review-1c, режим edt (код-ревью в EDT)
+        - codex-review-1c, режим offline (код-ревью выгрузки)
         - оба / общее
     validations:
       required: true

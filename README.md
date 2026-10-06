@@ -6,9 +6,9 @@
 | Скилл | Что делает |
 |---|---|
 | [`codex-test-1c`](skills/codex-test-1c/SKILL.md) | Функциональное тестирование: Codex сам гоняет сценарии в тест-клиенте 1С через MCP-сервер **1c-testpilot** и пишет отчёт ✅ / ⛔ / ⚠️ |
-| [`codex-review-offline`](skills/codex-review-offline/SKILL.md) | Код-ревью правок: Codex только читает локальную копию файлов, диффы относительно бэкапа и `context.md`, и возвращает находки по критичности |
+| [`codex-review-1c`](skills/codex-review-1c/SKILL.md) | Код-ревью правок: Codex только читает исходники и возвращает находки по критичности. Сам выбирает режим: **edt** — объекты прямо в проекте 1C:EDT по путям из дерева EDT; **offline** — выгрузка Конфигуратора без git (копия файлов, диффы с бэкапом, `context.md`) |
 
-Общий принцип обоих скиллов: Codex — исполнитель, Claude — проверяющий. Находки Codex не считаются
+Общий принцип скиллов: Codex — исполнитель, Claude — проверяющий. Находки Codex не считаются
 дефектами, пока Claude не подтвердит их по коду, метаданным или данным.
 
 Что-то пошло не так — смотрите [TROUBLESHOOTING.md](TROUBLESHOOTING.md) (симптом → причина → что делать).
@@ -21,7 +21,9 @@
 - Для `codex-test-1c` дополнительно:
   - 1С:Предприятие **8.3.27+** (или 8.5.1+) с лицензией на клиент, которым запускается тест-клиент;
   - MCP-сервер **1c-testpilot** (Python): исполняемый файл, например `%USERPROFILE%\.local\bin\1c-testpilot.exe`, и его `.env`.
-- Для `codex-review-offline` — `git` в PATH (только для `git diff --no-index`, репозиторий не нужен).
+- Для `codex-review-1c`:
+  - режим **edt** — [Node.js](https://nodejs.org/) в PATH (резолвер путей дерева EDT);
+  - режим **offline** — `git` в PATH (только для `git diff --no-index`, репозиторий не нужен).
 
 ## Установка
 
@@ -31,11 +33,14 @@
 
 ```powershell
 Copy-Item -Recurse skills\codex-test-1c        "$env:USERPROFILE\.claude\skills\codex-test-1c"
-Copy-Item -Recurse skills\codex-review-offline "$env:USERPROFILE\.claude\skills\codex-review-offline"
+Copy-Item -Recurse skills\codex-review-1c      "$env:USERPROFILE\.claude\skills\codex-review-1c"
 # или в проект: <проект>\.claude\skills\<скилл>
 ```
 
-Вызов: `/codex-test-1c <промт.md>` («протестируй кодексом»), `/codex-review-offline <файл или объект>` («сделай ревью кодексом»).
+Вызов: `/codex-test-1c <промт.md>` («протестируй кодексом»), `/codex-review-1c <EDT-путь, файл или объект>` («сделай ревью кодексом»).
+
+> **Переименование.** Скилл `codex-review-offline` объединён с режимом EDT и называется теперь `codex-review-1c`.
+> Если ставили старый — удалите `…\.claude\skills\codex-review-offline` и скопируйте новый каталог.
 
 Необязательно: чтобы Claude мог и сам работать с тест-клиентом (короткие проверки), подключите ему 1c-testpilot —
 пример в [`claude/mcp.json.example`](claude/mcp.json.example) (в `.mcp.json` проекта или в настройки пользователя).
@@ -83,26 +88,47 @@ $p = Start-Process powershell.exe -ArgumentList '-NoProfile','-ExecutionPolicy',
 - Обновление Codex может стереть секцию `[mcp_servers.1c-testpilot]` — раннер ловит это (`PREFLIGHT FAIL`).
 - Рабочий каталог — полным путём, не коротким 8.3-именем (`ABCD~1`).
 
-## codex-review-offline — код-ревью
+## codex-review-1c — код-ревью
 
-Для проектов-выгрузок Конфигуратора (XML) без git: «до» берётся из папки-бэкапа, сделанной перед правкой.
+Один скилл, два режима. Режим выбирается автоматически (`--mode edt|offline` — явно):
 
-1. Claude кладёт в рабочий каталог (ASCII-имя) текущие файлы, диффы относительно бэкапа (CRLF нормализован),
-   `context.md` (что и зачем изменено) и `_prompt.txt` по шаблону из SKILL.md.
-2. Запуск: [`codex-review.ps1`](skills/codex-review-offline/scripts/codex-review.ps1) —
-   `codex exec --ignore-user-config --sandbox read-only`, ответ в `_review.md`.
-3. Claude проверяет каждую находку фактами и докладывает раздельно: подтвердилось / снято / оставлено осознанно.
+| Признак | Режим |
+|---|---|
+| аргумент — путь из дерева EDT (`Документы→МойДокумент→Формы→ФормаДокумента`) или в проекте есть `DT-INF/PROJECT.PMF` | **edt** |
+| в корне `Configuration.xml`, у объектов каталоги `Ext/` (выгрузка Конфигуратора) | **offline** |
+| не определить однозначно | Claude спрашивает |
+
+Общий порядок:
+
+1. Claude определяет, что ревьюить:
+   - **edt** — резолвер [`edt-resolve.mjs`](skills/codex-review-1c/scripts/edt-resolve.mjs) переводит путь из дерева EDT в папки
+     объектов (проекты рабочей области находит сам: подпапки с `src/`); имя в нескольких проектах — уточняет;
+   - **offline** — кладёт в рабочий каталог (ASCII-имя) текущие файлы, диффы относительно бэкапа (CRLF нормализован)
+     и `context.md`.
+2. Пишет `_prompt.txt` по шаблону из SKILL.md: по умолчанию ревьюятся только правки (маркеры из CLAUDE.md проекта),
+   `--all` — объекты целиком. Повторный прогон — с журналом `review.md`: Codex сначала даёт вердикт по открытым
+   находкам, потом новые.
+3. Запуск: [`codex-review.ps1`](skills/codex-review-1c/scripts/codex-review.ps1) —
+   `codex exec --ignore-user-config --sandbox read-only`, промпт через stdin, сторож по времени, ответ в `_review.md`.
+4. Claude проверяет каждую находку фактами, даёт по ней вердикт (чинить / отклонить / на решение) и обновляет журнал.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-offline\scripts\codex-review.ps1 `
-  -WorkDir "<workdir>" -PromptFile "<workdir>\_prompt.txt" -Effort high
+# edt: -WorkDir — корень рабочей области EDT (где лежат проекты)
+powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scripts\codex-review.ps1 `
+  -Mode edt -WorkDir "<рабочая область EDT>" -PromptFile "<workdir>\_prompt.txt" -Effort high
+
+# offline: -WorkDir — каталог с материалами
+powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scripts\codex-review.ps1 `
+  -Mode offline -WorkDir "<workdir>" -PromptFile "<workdir>\_prompt.txt" -Effort high
 ```
 
 Главные подводные камни:
 
 - Песочница Windows `elevated` блокирует даже чтение файлов («blocked by policy») — раннер передаёт `windows.sandbox="unelevated"`, запрет записи сохраняется.
-- `context.md` сохраняйте в UTF-8 **с BOM**: без него Codex читает кириллицу как ANSI.
-- Кириллица в имени рабочего каталога мешает Codex читать файлы.
+- Промпт — только файлом (раннер подаёт его в stdin и закрывает поток): аргументом командной строки кириллица ломается, а незакрытый stdin вешает Codex.
+- Ревью большого объекта идёт 5–15 минут: раннер ждёт до `-TimeoutSec` (900 с), потом принудительно завершает Codex. Запускайте в фоне.
+- Код 0 без ответа (исчерпан лимит, «at capacity») раннер считает ошибкой и печатает хвост лога — не принимайте пустоту за «замечаний нет».
+- offline: `context.md` сохраняйте в UTF-8 **с BOM**; кириллица в имени рабочего каталога мешает Codex читать файлы.
 
 > `.ps1` хранятся в UTF-8 с BOM: Windows PowerShell 5.1 читает файлы без BOM как ANSI и ломает кириллицу.
 
@@ -113,9 +139,10 @@ skills/codex-test-1c/
   SKILL.md                         — инструкция для Claude Code
   scripts/run-codex-test.ps1       — раннер Codex для тестирования
   scripts/preamble.md              — преамбула, дописываемая к любому промту тестирования
-skills/codex-review-offline/
-  SKILL.md                         — инструкция для Claude Code
-  scripts/codex-review.ps1         — раннер Codex для ревью (read-only)
+skills/codex-review-1c/
+  SKILL.md                         — инструкция для Claude Code (режимы edt и offline)
+  scripts/codex-review.ps1         — раннер Codex для ревью (read-only, сторож по времени)
+  scripts/edt-resolve.mjs          — резолвер пути из дерева EDT в папки объектов
 codex/config.toml.example          — подключение 1c-testpilot к Codex
 claude/mcp.json.example            — (необязательно) подключение 1c-testpilot к Claude Code
 examples/prompt-template.md        — шаблон промта тестирования
