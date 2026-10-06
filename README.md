@@ -80,7 +80,7 @@ $p = Start-Process powershell.exe -ArgumentList '-NoProfile','-ExecutionPolicy',
   '-AddDir','<каталог отчёта>' -WindowStyle Hidden -PassThru; "PID $($p.Id)"
 ```
 
-Результат: `status.txt` (`START` / `PREFLIGHT` / `EXIT` / `TESTPILOT_CALLS`), `last_message.md`, `stdout.log`,
+Результат: `status.txt` (`START` / `EXIT` / `TESTPILOT_CALLS`; строка `PREFLIGHT FAIL` появляется только при сбое проверки конфига), `last_message.md`, `stdout.log`,
 `stderr.log` (UTF-16). `EXIT 0` при `TESTPILOT_CALLS 0` означает, что Codex до 1С не дошёл.
 
 Модель и уровень рассуждений тестирования раннер задаёт сам: по умолчанию `gpt-6-luna` / `max`
@@ -133,7 +133,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scrip
 - Промпт — только файлом (раннер подаёт его в stdin и закрывает поток): аргументом командной строки кириллица ломается, а незакрытый stdin вешает Codex.
 - По умолчанию модель `gpt-6-sol`, уровень рассуждения `high` (`-Model`, `-Effort` — переопределить). Ревью большого объекта идёт 3–15 минут (на `max` — до 25): раннер ждёт до `-TimeoutSec` (1800 с), потом принудительно завершает Codex. Запускайте в фоне.
 - Код 0 без ответа (исчерпан лимит, «at capacity») раннер считает ошибкой и печатает хвост лога — не принимайте пустоту за «замечаний нет».
-- offline: `context.md` сохраняйте в UTF-8 **с BOM**; кириллица в имени рабочего каталога мешает Codex читать файлы.
+- offline: `context.md` сохраняйте в UTF-8 **с BOM**; кириллица в имени самого рабочего каталога мешает Codex читать файлы (выше по пути — не мешает).
 
 > `.ps1` хранятся в UTF-8 с BOM: Windows PowerShell 5.1 читает файлы без BOM как ANSI и ломает кириллицу.
 
