@@ -7,6 +7,7 @@
 |---|---|
 | [`codex-test-1c`](skills/codex-test-1c/SKILL.md) | Функциональное тестирование: Codex сам гоняет сценарии в тест-клиенте 1С через MCP-сервер **1c-testpilot** и пишет отчёт ✅ / ⛔ / ⚠️ |
 | [`codex-review-1c`](skills/codex-review-1c/SKILL.md) | Код-ревью правок: Codex только читает исходники и возвращает находки по критичности. Сам выбирает режим: **edt** — объекты прямо в проекте 1C:EDT по путям из дерева EDT; **offline** — выгрузка Конфигуратора без git (копия файлов, диффы с бэкапом, `context.md`) |
+| [`ibcmd-1c`](skills/ibcmd-1c/SKILL.md) | Загрузка и выгрузка через **ibcmd** без Конфигуратора: частичный импорт объектов из XML-выгрузки в базу + обновление конфигурации БД, выгрузка базы в XML, резервная копия `.cf`/`.cfe`. Codex не нужен |
 
 Общий принцип скиллов: Codex — исполнитель, Claude — проверяющий. Находки Codex не считаются
 дефектами, пока Claude не подтвердит их по коду, метаданным или данным. Итог каждого прогона дописывается
@@ -26,6 +27,7 @@
 - Для `codex-review-1c`:
   - режим **edt** — [Node.js](https://nodejs.org/) в PATH (резолвер путей дерева EDT);
   - режим **offline** — `git` в PATH (только для `git diff --no-index`, репозиторий не нужен).
+- Для `ibcmd-1c`: платформа 1С 8.3.14+ с `ibcmd.exe` (входит в установку платформы), Codex не нужен.
 
 ## Установка
 
@@ -36,10 +38,11 @@
 ```powershell
 Copy-Item -Recurse skills\codex-test-1c        "$env:USERPROFILE\.claude\skills\codex-test-1c"
 Copy-Item -Recurse skills\codex-review-1c      "$env:USERPROFILE\.claude\skills\codex-review-1c"
+Copy-Item -Recurse skills\ibcmd-1c             "$env:USERPROFILE\.claude\skills\ibcmd-1c"
 # или в проект: <проект>\.claude\skills\<скилл>
 ```
 
-Вызов: `/codex-test-1c <промт.md>` («протестируй кодексом»), `/codex-review-1c <EDT-путь, файл или объект>` («сделай ревью кодексом»).
+Вызов: `/codex-test-1c <промт.md>` («протестируй кодексом»), `/codex-review-1c <EDT-путь, файл или объект>` («сделай ревью кодексом»), `/ibcmd-1c load|export …` («загрузи в базу», «выгрузи исходники»).
 
 > **Переименование.** Скилл `codex-review-offline` объединён с режимом EDT и называется теперь `codex-review-1c`.
 > Если ставили старый — удалите `…\.claude\skills\codex-review-offline` и скопируйте новый каталог.
@@ -137,6 +140,26 @@ powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scrip
 
 > `.ps1` хранятся в UTF-8 с BOM: Windows PowerShell 5.1 читает файлы без BOM как ANSI и ломает кириллицу.
 
+## ibcmd-1c — загрузка и выгрузка без Конфигуратора
+
+```powershell
+# сначала посмотреть состав файлов и команды
+powershell -NoProfile -ExecutionPolicy Bypass -File skills\ibcmd-1c\scripts\ibcmd-load.ps1 `
+  -DbPath "C:\Bases\ERP" -User "Администратор" -BaseDir "C:\Bases\ERP_SRC\cf" -Objects "Reports\МойОтчет" -WhatIf
+# затем без -WhatIf, с резервной копией: -BackupDir "C:\Temp\bak"
+
+# выгрузка базы в XML (ibcmd пишет только в пустой каталог; -Replace заменяет содержимое, скрытые .git/.code-index не трогает)
+powershell -NoProfile -ExecutionPolicy Bypass -File skills\ibcmd-1c\scripts\ibcmd-export.ps1 `
+  -DbPath "C:\Bases\ERP" -User "Администратор" -OutDir "C:\Bases\ERP_SRC\cf" -Replace
+```
+
+Главные подводные камни (подробно — в [SKILL.md](skills/ibcmd-1c/SKILL.md)):
+
+- Новый объект (и новое заимствование в расширении) грузится только вместе с `Configuration.xml`, иначе «нельзя добавлять объекты метаданных без загрузки родительского объекта».
+- С `Configuration.xml` расширения ibcmd проверяет всё расширение и может упасть на старых ссылках форм («неизвестный предопределенный элемент»), не связанных с правкой. `-NoCheck` — только с согласия пользователя.
+- Пустой пароль: ibcmd всё равно спрашивает его с консоли — скрипты подают пароль в stdin. База без пользователей — запускать без `-User`.
+- Полная справка по ключам — `ibcmd help config`; `ibcmd config import --help` показывает только список режимов.
+
 ## Структура
 
 ```
@@ -148,6 +171,10 @@ skills/codex-review-1c/
   SKILL.md                         — инструкция для Claude Code (режимы edt и offline)
   scripts/codex-review.ps1         — раннер Codex для ревью (read-only, сторож по времени)
   scripts/edt-resolve.mjs          — резолвер пути из дерева EDT в папки объектов
+skills/ibcmd-1c/
+  SKILL.md                         — инструкция для Claude Code
+  scripts/ibcmd-load.ps1           — частичный импорт из XML + config apply (резервная копия, -WhatIf)
+  scripts/ibcmd-export.ps1         — выгрузка конфигурации/расширения в XML
 codex/config.toml.example          — подключение 1c-testpilot к Codex
 claude/mcp.json.example            — (необязательно) подключение 1c-testpilot к Claude Code
 examples/prompt-template.md        — шаблон промта тестирования
