@@ -7,7 +7,7 @@
 |---|---|
 | [`codex-test-1c`](skills/codex-test-1c/SKILL.md) | Функциональное тестирование: Codex сам гоняет сценарии в тест-клиенте 1С через MCP-сервер **1c-testpilot** и пишет отчёт ✅ / ⛔ / ⚠️ |
 | [`codex-review-1c`](skills/codex-review-1c/SKILL.md) | Код-ревью правок: Codex только читает исходники и возвращает находки по критичности. Сам выбирает режим: **edt** — объекты прямо в проекте 1C:EDT по путям из дерева EDT; **offline** — выгрузка Конфигуратора без git (копия файлов, диффы с бэкапом, `context.md`) |
-| [`ibcmd-1c`](skills/ibcmd-1c/SKILL.md) | Загрузка и выгрузка через **ibcmd** без Конфигуратора: частичный импорт объектов из XML-выгрузки в базу + обновление конфигурации БД, выгрузка базы в XML, резервная копия `.cf`/`.cfe`. Codex не нужен |
+| [`ibcmd-1c`](skills/ibcmd-1c/SKILL.md) | Загрузка и выгрузка через **ibcmd** без Конфигуратора: частичный или полный импорт из XML-выгрузки в базу + обновление конфигурации БД, выгрузка базы или отдельных объектов в XML, создание базы из `.dt`/`.cf`, резервная копия `.cf`/`.cfe` и контроль результата. Codex не нужен |
 
 Общий принцип скиллов: Codex — исполнитель, Claude — проверяющий. Находки Codex не считаются
 дефектами, пока Claude не подтвердит их по коду, метаданным или данным. Итог каждого прогона дописывается
@@ -146,17 +146,26 @@ powershell -NoProfile -ExecutionPolicy Bypass -File skills\codex-review-1c\scrip
 # сначала посмотреть состав файлов и команды
 powershell -NoProfile -ExecutionPolicy Bypass -File skills\ibcmd-1c\scripts\ibcmd-load.ps1 `
   -DbPath "C:\Bases\ERP" -User "Администратор" -BaseDir "C:\Bases\ERP_SRC\cf" -Objects "Reports\МойОтчет" -WhatIf
-# затем без -WhatIf, с резервной копией: -BackupDir "C:\Temp\bak"
+# затем без -WhatIf, с резервной копией и контролем размера до apply: -BackupDir "C:\Temp\bak" -Verify
 
 # выгрузка базы в XML (ibcmd пишет только в пустой каталог; -Replace заменяет содержимое, скрытые .git/.code-index не трогает)
 powershell -NoProfile -ExecutionPolicy Bypass -File skills\ibcmd-1c\scripts\ibcmd-export.ps1 `
   -DbPath "C:\Bases\ERP" -User "Администратор" -OutDir "C:\Bases\ERP_SRC\cf" -Replace
+
+# только отдельные объекты (export objects --recursive), в пустой каталог — для сверки «что в базе»
+powershell -NoProfile -ExecutionPolicy Bypass -File skills\ibcmd-1c\scripts\ibcmd-export.ps1 `
+  -DbPath "C:\Bases\ERP" -User "Администратор" -OutDir "C:\Temp\check" -Objects "Document.ЗаказКлиента,Report.МойОтчет"
 ```
+
+Оба скрипта принимают `-TempDir` — каталог временных файлов ibcmd, если на системном диске мало места.
+В SKILL.md также: создание базы из `.dt`/`.cf`, выгрузка всех расширений, откат.
 
 Главные подводные камни (подробно — в [SKILL.md](skills/ibcmd-1c/SKILL.md)):
 
 - Новый объект (и новое заимствование в расширении) грузится только вместе с `Configuration.xml`, иначе «нельзя добавлять объекты метаданных без загрузки родительского объекта».
-- С `Configuration.xml` расширения ibcmd проверяет всё расширение и может упасть на старых ссылках форм («неизвестный предопределенный элемент»), не связанных с правкой. `-NoCheck` — только с согласия пользователя.
+- С `Configuration.xml` расширения ibcmd проверяет всё расширение и может упасть на старых ссылках форм («неизвестный предопределенный элемент»), не связанных с правкой. Обход — `-FullImport` (полный импорт каталога расширения); `-NoCheck` — только с согласия пользователя.
+- **Повторный полный импорт расширения может его испортить** (импорт «успешен», `.cfe` в разы меньше, `apply` падает). Поэтому `-FullImport` требует `-BackupDir` и сам проверяет размер до `apply` (`-Verify`, код 3 и команда отката).
+- Команды без `--user` в базе с пользователями не падают, а молча висят, ожидая пароль.
 - Пустой пароль: ibcmd всё равно спрашивает его с консоли — скрипты подают пароль в stdin. База без пользователей — запускать без `-User`.
 - Полная справка по ключам — `ibcmd help config`; `ibcmd config import --help` показывает только список режимов.
 
@@ -173,8 +182,8 @@ skills/codex-review-1c/
   scripts/edt-resolve.mjs          — резолвер пути из дерева EDT в папки объектов
 skills/ibcmd-1c/
   SKILL.md                         — инструкция для Claude Code
-  scripts/ibcmd-load.ps1           — частичный импорт из XML + config apply (резервная копия, -WhatIf)
-  scripts/ibcmd-export.ps1         — выгрузка конфигурации/расширения в XML
+  scripts/ibcmd-load.ps1           — частичный/полный импорт из XML + config apply (резервная копия, -Verify, -WhatIf)
+  scripts/ibcmd-export.ps1         — выгрузка конфигурации/расширения или отдельных объектов в XML
 codex/config.toml.example          — подключение 1c-testpilot к Codex
 claude/mcp.json.example            — (необязательно) подключение 1c-testpilot к Claude Code
 examples/prompt-template.md        — шаблон промта тестирования
