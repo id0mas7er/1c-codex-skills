@@ -10,6 +10,10 @@
 .EXAMPLE
   ibcmd-export.ps1 -DbPath C:\Bases\ERP -User Админ -OutDir C:\Bases\ERP_SRC\cf -Replace
   ibcmd-export.ps1 -DbPath C:\Bases\ERP -User Админ -Extension МоёРасширение -OutDir C:\Bases\ERP_SRC\cfe\МоёРасширение -Replace
+
+.EXAMPLE
+  # отдельные объекты (с дочерними: формы, макеты) — в пустой каталог
+  ibcmd-export.ps1 -DbPath C:\Bases\ERP -User Админ -OutDir C:\Temp\check -Objects "Document.ЗаказКлиента,Report.МойОтчет"
 #>
 param(
     [Parameter(Mandatory = $true)][string]$DbPath,
@@ -19,6 +23,10 @@ param(
     [Parameter(Mandatory = $true)][string]$OutDir,
     [string]$Extension = '',
     [switch]$Replace,
+    # Только эти объекты (Document.X, Report.Y, DefinedType.Z …): config export objects --recursive
+    [string[]]$Objects = @(),
+    # Каталог временных файлов ibcmd (TEMP/TMP)
+    [string]$TempDir = '',
     [string]$Ibcmd = ''
 )
 
@@ -32,20 +40,35 @@ if (-not $Ibcmd) {
 }
 if (-not $Ibcmd -or -not (Test-Path $Ibcmd)) { Write-Host 'ibcmd.exe не найден, укажите -Ibcmd'; exit 2 }
 
+# powershell -File передаёт массив одной строкой через запятую
+$Objects = @($Objects | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($TempDir) {
+    New-Item -ItemType Directory -Force $TempDir | Out-Null
+    $env:TEMP = $TempDir; $env:TMP = $TempDir
+}
+
 $OutDir = $OutDir.TrimEnd('\')
 $target = $OutDir
 # ibcmd считает непустым и каталог только со скрытыми записями (.git, .code-index)
 $busy = (Test-Path $OutDir) -and @(Get-ChildItem $OutDir -Force).Count -gt 0
+if ($busy -and $Objects.Count) { Write-Host "$OutDir не пуст: отдельные объекты выгружаются только в пустой (или новый) каталог"; exit 2 }
 if ($busy) {
     if (-not $Replace) { Write-Host "$OutDir не пуст: ibcmd выгружает только в пустой каталог. Добавьте -Replace"; exit 2 }
     $target = "$OutDir.__new"
     if (Test-Path $target) { Write-Host "$target уже существует: остался от прошлой выгрузки, разберитесь с ним"; exit 2 }
 }
 
-$ibArgs = @('infobase', 'config', 'export', "--db-path=$DbPath")
+$ibArgs = @('infobase', 'config', 'export')
+if ($Objects.Count) { $ibArgs += 'objects' }
+$ibArgs += "--db-path=$DbPath"
 if ($User) { $ibArgs += @("--user=$User", "--password=$Password") }
 if ($Extension) { $ibArgs += "--extension=$Extension" }
-$ibArgs += $target
+if ($Objects.Count) {
+    # --recursive: с формами, макетами и т.п.; --ignore-unresolved-refs: не падать на ссылках на невыгружаемые объекты
+    $ibArgs += @("--out=$target", '--recursive', '--ignore-unresolved-refs') + $Objects
+} else {
+    $ibArgs += $target
+}
 
 Write-Host "ibcmd: $Ibcmd"
 Write-Host "выгрузка в $target"
