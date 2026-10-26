@@ -40,7 +40,7 @@
 Copy-Item -Recurse skills\codex-test-1c        "$env:USERPROFILE\.claude\skills\codex-test-1c"
 Copy-Item -Recurse skills\codex-review-1c      "$env:USERPROFILE\.claude\skills\codex-review-1c"
 Copy-Item -Recurse skills\ibcmd-1c             "$env:USERPROFILE\.claude\skills\ibcmd-1c"
-Copy-Item -Recurse skillsc-mcp-toolkit-gotchas "$env:USERPROFILE\.claude\skillsc-mcp-toolkit-gotchas"
+Copy-Item -Recurse skills\1c-mcp-toolkit-gotchas "$env:USERPROFILE\.claude\skills\1c-mcp-toolkit-gotchas"
 # или в проект: <проект>\.claude\skills\<скилл>
 ```
 
