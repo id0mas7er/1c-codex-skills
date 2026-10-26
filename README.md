@@ -8,6 +8,7 @@
 | [`codex-test-1c`](skills/codex-test-1c/SKILL.md) | Функциональное тестирование: Codex сам гоняет сценарии в тест-клиенте 1С через MCP-сервер **1c-testpilot** и пишет отчёт ✅ / ⛔ / ⚠️ |
 | [`codex-review-1c`](skills/codex-review-1c/SKILL.md) | Код-ревью правок: Codex только читает исходники и возвращает находки по критичности. Сам выбирает режим: **edt** — объекты прямо в проекте 1C:EDT по путям из дерева EDT; **offline** — выгрузка Конфигуратора без git (копия файлов, диффы с бэкапом, `context.md`) |
 | [`ibcmd-1c`](skills/ibcmd-1c/SKILL.md) | Загрузка и выгрузка через **ibcmd** без Конфигуратора: частичный или полный импорт из XML-выгрузки в базу + обновление конфигурации БД, выгрузка базы или отдельных объектов в XML, создание базы из `.dt`/`.cf`, резервная копия `.cf`/`.cfe` и контроль результата. Codex не нужен |
+| [`1c-mcp-toolkit-gotchas`](skills/1c-mcp-toolkit-gotchas/SKILL.md) | Работа с [1c-mcp-toolkit](https://github.com/ROCTUP/1c-mcp-toolkit) (`mcp__1c-*`, REST `/api/*`): падение подключения после перезапуска клиента, таймауты, защита «Записать» в `execute_code`, анонимизация, ошибки запросов, чек-лист. Codex не нужен |
 
 Общий принцип скиллов: Codex — исполнитель, Claude — проверяющий. Находки Codex не считаются
 дефектами, пока Claude не подтвердит их по коду, метаданным или данным. Итог каждого прогона дописывается
@@ -39,6 +40,7 @@
 Copy-Item -Recurse skills\codex-test-1c        "$env:USERPROFILE\.claude\skills\codex-test-1c"
 Copy-Item -Recurse skills\codex-review-1c      "$env:USERPROFILE\.claude\skills\codex-review-1c"
 Copy-Item -Recurse skills\ibcmd-1c             "$env:USERPROFILE\.claude\skills\ibcmd-1c"
+Copy-Item -Recurse skillsc-mcp-toolkit-gotchas "$env:USERPROFILE\.claude\skillsc-mcp-toolkit-gotchas"
 # или в проект: <проект>\.claude\skills\<скилл>
 ```
 
@@ -184,6 +186,8 @@ skills/ibcmd-1c/
   SKILL.md                         — инструкция для Claude Code
   scripts/ibcmd-load.ps1           — частичный/полный импорт из XML + config apply (резервная копия, -Verify, -WhatIf)
   scripts/ibcmd-export.ps1         — выгрузка конфигурации/расширения или отдельных объектов в XML
+skills/1c-mcp-toolkit-gotchas/
+  SKILL.md                         — подводные камни 1c-mcp-toolkit (только инструкция, без скриптов)
 codex/config.toml.example          — подключение 1c-testpilot к Codex
 claude/mcp.json.example            — (необязательно) подключение 1c-testpilot к Claude Code
 examples/prompt-template.md        — шаблон промта тестирования
