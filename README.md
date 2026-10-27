@@ -9,6 +9,7 @@
 | [`codex-review-1c`](skills/codex-review-1c/SKILL.md) | Код-ревью правок: Codex только читает исходники и возвращает находки по критичности. Сам выбирает режим: **edt** — объекты прямо в проекте 1C:EDT по путям из дерева EDT; **offline** — выгрузка Конфигуратора без git (копия файлов, диффы с бэкапом, `context.md`) |
 | [`ibcmd-1c`](skills/ibcmd-1c/SKILL.md) | Загрузка и выгрузка через **ibcmd** без Конфигуратора: частичный или полный импорт из XML-выгрузки в базу + обновление конфигурации БД, выгрузка базы или отдельных объектов в XML, создание базы из `.dt`/`.cf`, резервная копия `.cf`/`.cfe` и контроль результата. Codex не нужен |
 | [`1c-mcp-toolkit-gotchas`](skills/1c-mcp-toolkit-gotchas/SKILL.md) | Работа с [1c-mcp-toolkit](https://github.com/ROCTUP/1c-mcp-toolkit) (`mcp__1c-*`, REST `/api/*`): падение подключения после перезапуска клиента, таймауты, защита «Записать» в `execute_code`, анонимизация, ошибки запросов, чек-лист. Codex не нужен |
+| [`v8std`](skills/v8std/SKILL.md) | Стандарты разработки 1С и диагностики АПК / BSL LS / EDT из базы [v8std.ru](https://v8std.ru/) через её MCP-сервер, без подключения MCP: поиск правила, полный текст со ссылкой на its.1c.ru, расшифровка кодов (`АПК:361`, `bslls:UsingModalWindows`), сопоставление процедуры со стандартами. Codex не нужен |
 
 Общий принцип скиллов: Codex — исполнитель, Claude — проверяющий. Находки Codex не считаются
 дефектами, пока Claude не подтвердит их по коду, метаданным или данным. Итог каждого прогона дописывается
@@ -29,6 +30,7 @@
   - режим **edt** — [Node.js](https://nodejs.org/) в PATH (резолвер путей дерева EDT);
   - режим **offline** — `git` в PATH (только для `git diff --no-index`, репозиторий не нужен).
 - Для `ibcmd-1c`: платформа 1С 8.3.14+ с `ibcmd.exe` (входит в установку платформы), Codex не нужен.
+- Для `v8std`: Python 3.8+ в PATH (только стандартная библиотека) и доступ к `https://ai.v8std.ru/mcp`, Codex не нужен.
 
 ## Установка
 
@@ -41,10 +43,11 @@ Copy-Item -Recurse skills\codex-test-1c        "$env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse skills\codex-review-1c      "$env:USERPROFILE\.claude\skills\codex-review-1c"
 Copy-Item -Recurse skills\ibcmd-1c             "$env:USERPROFILE\.claude\skills\ibcmd-1c"
 Copy-Item -Recurse skills\1c-mcp-toolkit-gotchas "$env:USERPROFILE\.claude\skills\1c-mcp-toolkit-gotchas"
+Copy-Item -Recurse skills\v8std                "$env:USERPROFILE\.claude\skills\v8std"
 # или в проект: <проект>\.claude\skills\<скилл>
 ```
 
-Вызов: `/codex-test-1c <промт.md>` («протестируй кодексом»), `/codex-review-1c <EDT-путь, файл или объект>` («сделай ревью кодексом»), `/ibcmd-1c load|export …` («загрузи в базу», «выгрузи исходники»).
+Вызов: `/codex-test-1c <промт.md>` («протестируй кодексом»), `/codex-review-1c <EDT-путь, файл или объект>` («сделай ревью кодексом»), `/ibcmd-1c load|export …` («загрузи в базу», «выгрузи исходники»), `/v8std` («что говорит стандарт про …», «расшифруй АПК:361»).
 
 > **Переименование.** Скилл `codex-review-offline` объединён с режимом EDT и называется теперь `codex-review-1c`.
 > Если ставили старый — удалите `…\.claude\skills\codex-review-offline` и скопируйте новый каталог.
@@ -171,6 +174,27 @@ powershell -NoProfile -ExecutionPolicy Bypass -File skills\ibcmd-1c\scripts\ibcm
 - Пустой пароль: ibcmd всё равно спрашивает его с консоли — скрипты подают пароль в stdin. База без пользователей — запускать без `-User`.
 - Полная справка по ключам — `ibcmd help config`; `ibcmd config import --help` показывает только список режимов.
 
+## v8std — стандарты разработки 1С
+
+Скилл обращается к публичному MCP-серверу [v8std.ru](https://v8std.ru/mcp/) через скрипт
+[`v8std.py`](skills/v8std/scripts/v8std.py). Сервер работает без сессии, поэтому подключать его
+к Claude Code как MCP не нужно. Claude сам выбирает команду по задаче:
+
+```powershell
+$v8 = "$env:USERPROFILE\.claude\skills\v8std\scripts\v8std.py"
+python $v8 search "модальные окна" --limit 5        # поиск правила по теме
+python $v8 page std703                              # полный текст стандарта (Markdown)
+python $v8 related std703                           # связанные диагностики и стандарты
+python $v8 diag "АПК:361" "acc 1245" "bslls:UsingModalWindows"   # расшифровка кодов
+python $v8 snippet --file proc.bsl                  # сопоставить процедуру/запрос со стандартами
+```
+
+- Сервер только читает базу знаний: анализаторы не запускает и проект не видит. Совпадения из `snippet` —
+  кандидаты, а не подтверждённые нарушения; пустой ответ не означает, что код правильный.
+- Публичный сервер получает текст запросов и фрагментов кода — секреты и персональные данные в `snippet` не отправлять.
+- Локальный сервер (Docker, инструкция на [v8std.ru/mcp](https://v8std.ru/mcp/)) задаётся переменной
+  `V8STD_MCP_URL`, например `http://127.0.0.1:18766/mcp`.
+
 ## Структура
 
 ```
@@ -188,6 +212,9 @@ skills/ibcmd-1c/
   scripts/ibcmd-export.ps1         — выгрузка конфигурации/расширения или отдельных объектов в XML
 skills/1c-mcp-toolkit-gotchas/
   SKILL.md                         — подводные камни 1c-mcp-toolkit (только инструкция, без скриптов)
+skills/v8std/
+  SKILL.md                         — инструкция для Claude Code: выбор инструмента, ссылки, ограничения
+  scripts/v8std.py                 — клиент MCP-сервера v8std.ru (search, page, related, diag, snippet)
 codex/config.toml.example          — подключение 1c-testpilot к Codex
 claude/mcp.json.example            — (необязательно) подключение 1c-testpilot к Claude Code
 examples/prompt-template.md        — шаблон промта тестирования
